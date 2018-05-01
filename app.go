@@ -6,6 +6,7 @@ import (
 	"errors"
 	"github.com/gin-gonic/gin"
 	"io"
+	"net/http"
 )
 
 var mask = []byte{128, 64, 32, 16, 8, 4, 2, 1}
@@ -19,35 +20,44 @@ func main() {
 
 	r.POST("/encode", func(c *gin.Context) {
 		file, _, err := c.Request.FormFile("image")
-		defer file.Close()
 		if err != nil {
+			http.Error(c.Writer, err.Error(), http.StatusNotFound)
 			panic(err)
 		}
+		defer file.Close()
 
 		buf := bytes.NewBuffer(nil)
 		if _, err := io.Copy(buf, file); err != nil {
+			http.Error(c.Writer, err.Error(), http.StatusInternalServerError)
 			panic(err)
 		}
 
 		img, err := encodeMessage(buf, c.PostForm("message"))
+		if err != nil {
+			http.Error(c.Writer, err.Error(), http.StatusBadRequest)
+			panic(err)
+		}
 
 		c.Writer.WriteString(b64.StdEncoding.EncodeToString(img.Bytes()))
 	})
 
 	r.POST("/decode", func(c *gin.Context) {
 		file, _, err := c.Request.FormFile("image")
-		defer file.Close()
 		if err != nil {
+			http.Error(c.Writer, err.Error(), http.StatusNotFound)
 			panic(err)
 		}
+		defer file.Close()
 
 		buf := bytes.NewBuffer(nil)
 		if _, err := io.Copy(buf, file); err != nil {
+			http.Error(c.Writer, err.Error(), http.StatusInternalServerError)
 			panic(err)
 		}
 
 		msg := decodeMessage(buf)
 
+		c.Writer.WriteHeader(http.StatusOK)
 		c.Writer.WriteString(msg)
 	})
 

@@ -58,7 +58,7 @@
                 processData: false,
                 contentType: false,
                 error: function (jqXHR, textStatus, errorMessage) {
-                    console.log(errorMessage); // Optional
+                    alert(errorMessage); // Optional
                 },
                 success: function (data) {
                     $("#imageDisplayEncode").prop("src", 'data:image/bmp;base64,' + data);
