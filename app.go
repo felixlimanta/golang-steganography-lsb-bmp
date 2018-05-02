@@ -2,14 +2,14 @@ package main
 
 import (
 	"bytes"
-	b64 "encoding/base64"
+	"encoding/base64"
 	"errors"
 	"github.com/gin-gonic/gin"
 	"io"
 	"net/http"
 )
 
-var mask = []byte{128, 64, 32, 16, 8, 4, 2, 1}
+var mask = [...]byte{128, 64, 32, 16, 8, 4, 2, 1}
 
 func main() {
 	r := gin.Default()
@@ -32,13 +32,13 @@ func main() {
 			panic(err)
 		}
 
-		img, err := encodeMessage(buf, c.PostForm("message"))
+		img, err := encodeMessage(buf.Bytes()[:], c.PostForm("message"))
 		if err != nil {
 			http.Error(c.Writer, err.Error(), http.StatusBadRequest)
 			panic(err)
 		}
 
-		c.Writer.WriteString(b64.StdEncoding.EncodeToString(img.Bytes()))
+		c.Writer.WriteString(base64.StdEncoding.EncodeToString(img))
 	})
 
 	r.POST("/decode", func(c *gin.Context) {
@@ -55,7 +55,7 @@ func main() {
 			panic(err)
 		}
 
-		msg := decodeMessage(buf)
+		msg := decodeMessage(buf.Bytes()[:])
 
 		c.Writer.WriteHeader(http.StatusOK)
 		c.Writer.WriteString(msg)
@@ -64,13 +64,11 @@ func main() {
 	r.Run(":5000")
 }
 
-func encodeMessage(pic *bytes.Buffer, message string) (bytes.Buffer, error) {
-	img := pic.Bytes()
+func encodeMessage(img []byte, message string) ([]byte, error) {
 	m := []byte(message)
-	var buf bytes.Buffer
 
 	if len(message)*8 > len(img)-54 {
-		return buf, errors.New("Error: image is not large enough to hold this message")
+		return nil, errors.New("Error: image is not large enough to hold this message")
 	}
 
 	for i := 0; i < len(m); i++ {
@@ -92,12 +90,10 @@ func encodeMessage(pic *bytes.Buffer, message string) (bytes.Buffer, error) {
 		}
 	}
 
-	buf.Write(img)
-	return buf, nil
+	return img, nil
 }
 
-func decodeMessage(pic *bytes.Buffer) string {
-	img := pic.Bytes()
+func decodeMessage(img []byte) string {
 	message := ""
 
 	for i := 55; i < len(img)-9; i += 8 {
